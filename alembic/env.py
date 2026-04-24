@@ -14,7 +14,7 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # Import all models so Alembic can detect schema changes via autogenerate
-from app.database import Base, _build_async_url
+from app.database import Base, _build_async_url, _get_ssl_args
 from app.models import *  # noqa: F401, F403 — registers all mapped classes
 
 config = context.config
@@ -24,19 +24,19 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def _get_url() -> str:
+def _get_raw_url() -> str:
     import os
     url = os.environ.get("DATABASE_URL", "")
     if not url:
         from app.config import get_settings
         url = get_settings().database_url
-    return _build_async_url(url)
+    return url
 
 
 def run_migrations_offline() -> None:
     """Run migrations without a live DB connection (outputs SQL)."""
     context.configure(
-        url=_get_url(),
+        url=_build_async_url(_get_raw_url()),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -53,7 +53,11 @@ def do_run_migrations(connection):
 
 async def run_migrations_online() -> None:
     """Run migrations against a live DB using an async engine."""
-    engine = create_async_engine(_get_url())
+    raw_url = _get_raw_url()
+    engine = create_async_engine(
+        _build_async_url(raw_url),
+        connect_args=_get_ssl_args(raw_url),
+    )
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()

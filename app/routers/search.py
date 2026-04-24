@@ -55,9 +55,7 @@ async def search(
         + " "
         + func.coalesce(Paper.plain_summary, "")
         + " "
-        + func.coalesce(Paper.technical_summary, "")
-        + " "
-        + func.array_to_string(Paper.tags, " "),
+        + func.coalesce(Paper.technical_summary, ""),
     )
     paper_query = func.plainto_tsquery("english", q)
     paper_rank = func.ts_rank(paper_ts, paper_query).label("rank")
