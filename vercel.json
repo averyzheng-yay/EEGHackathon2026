@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/internal/ingest",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/internal/recompute-recommendations",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

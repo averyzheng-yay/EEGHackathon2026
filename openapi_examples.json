@@ -1,0 +1,527 @@
+{
+  "_note": "Realistic example responses for every OLAPIS API endpoint. Use these in v0 to build mock UI states without a running backend.",
+
+  "POST /api/auth/register": {
+    "status": 201,
+    "description": "Create a new account",
+    "request": {
+      "email": "riya@example.com",
+      "username": "riya_reads",
+      "password": "supersecret123"
+    },
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzZmE4NWY2NC01NzE3LTQ1NjItYjNmYy0yYzk2M2Y2NmFmYTYiLCJ1c2VybmFtZSI6InJpeWFfcmVhZHMiLCJleHAiOjE3MTQ0OTYwMDAsInR5cGUiOiJhY2Nlc3MifQ.abc123",
+      "refresh_token": "dGhpcyBpcyBhIHJhbmRvbSByZWZyZXNoIHRva2VuIHN0cmluZw",
+      "token_type": "bearer",
+      "user": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "email": "riya@example.com",
+        "username": "riya_reads",
+        "expertise_level": "beginner",
+        "onboarding_complete": false,
+        "interests": [],
+        "created_at": "2025-04-24T10:00:00Z",
+        "updated_at": "2025-04-24T10:00:00Z"
+      }
+    }
+  },
+
+  "POST /api/auth/login": {
+    "status": 200,
+    "description": "Log in with email + password; optionally pass session_id to merge anonymous votes",
+    "request": {
+      "email": "riya@example.com",
+      "password": "supersecret123",
+      "session_id": "anon_sess_abc123"
+    },
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "refresh_token": "dGhpcyBpcyBhIHJhbmRvbSByZWZyZXNoIHRva2VuIHN0cmluZw",
+      "token_type": "bearer",
+      "user": {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "email": "riya@example.com",
+        "username": "riya_reads",
+        "expertise_level": "intermediate",
+        "onboarding_complete": true,
+        "interests": [
+          {"tag_slug": "artificial-intelligence", "priority": 1},
+          {"tag_slug": "machine-learning", "priority": 2},
+          {"tag_slug": "natural-language-processing", "priority": 3}
+        ],
+        "created_at": "2025-04-01T10:00:00Z",
+        "updated_at": "2025-04-24T09:15:00Z"
+      }
+    }
+  },
+
+  "POST /api/auth/refresh": {
+    "status": 200,
+    "description": "Rotate a refresh token — returns a new access + refresh token pair",
+    "request": {"refresh_token": "old_refresh_token_string"},
+    "response": {
+      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new...",
+      "refresh_token": "bmV3IHJlZnJlc2ggdG9rZW4gc3RyaW5n",
+      "token_type": "bearer"
+    }
+  },
+
+  "POST /api/auth/logout": {
+    "status": 204,
+    "description": "Revoke the refresh token; returns no body"
+  },
+
+  "GET /api/users/me": {
+    "status": 200,
+    "description": "Current authenticated user's full profile",
+    "response": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "riya@example.com",
+      "username": "riya_reads",
+      "expertise_level": "intermediate",
+      "onboarding_complete": true,
+      "interests": [
+        {"tag_slug": "artificial-intelligence", "priority": 1},
+        {"tag_slug": "machine-learning", "priority": 2},
+        {"tag_slug": "natural-language-processing", "priority": 3},
+        {"tag_slug": "cognitive-science", "priority": 4},
+        {"tag_slug": "neuroscience", "priority": 5}
+      ],
+      "created_at": "2025-04-01T10:00:00Z",
+      "updated_at": "2025-04-24T09:15:00Z"
+    }
+  },
+
+  "PATCH /api/users/me": {
+    "status": 200,
+    "description": "Update expertise level or interests",
+    "request": {
+      "expertise_level": "expert",
+      "interests": ["artificial-intelligence", "deep-learning", "natural-language-processing"]
+    },
+    "response": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "riya@example.com",
+      "username": "riya_reads",
+      "expertise_level": "expert",
+      "onboarding_complete": true,
+      "interests": [
+        {"tag_slug": "artificial-intelligence", "priority": 1},
+        {"tag_slug": "deep-learning", "priority": 2},
+        {"tag_slug": "natural-language-processing", "priority": 3}
+      ],
+      "created_at": "2025-04-01T10:00:00Z",
+      "updated_at": "2025-04-24T11:30:00Z"
+    }
+  },
+
+  "POST /api/users/me/onboarding": {
+    "status": 200,
+    "description": "Complete onboarding — sets expertise level + top interest tags",
+    "request": {
+      "expertise_level": "intermediate",
+      "interests": ["artificial-intelligence", "machine-learning", "natural-language-processing", "cognitive-science", "neuroscience"]
+    },
+    "response": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "email": "riya@example.com",
+      "username": "riya_reads",
+      "expertise_level": "intermediate",
+      "onboarding_complete": true,
+      "interests": [
+        {"tag_slug": "artificial-intelligence", "priority": 1},
+        {"tag_slug": "machine-learning", "priority": 2},
+        {"tag_slug": "natural-language-processing", "priority": 3},
+        {"tag_slug": "cognitive-science", "priority": 4},
+        {"tag_slug": "neuroscience", "priority": 5}
+      ],
+      "created_at": "2025-04-24T10:00:00Z",
+      "updated_at": "2025-04-24T10:02:00Z"
+    }
+  },
+
+  "GET /api/users/{username}": {
+    "status": 200,
+    "description": "Public profile — no PII exposed",
+    "response": {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "username": "riya_reads",
+      "expertise_level": "intermediate",
+      "created_at": "2025-04-01T10:00:00Z"
+    }
+  },
+
+  "GET /api/papers": {
+    "status": 200,
+    "description": "Paginated Reels feed — personalized for logged-in users, top-voted for anonymous",
+    "response": {
+      "items": [
+        {
+          "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+          "arxiv_id": "2404.12345",
+          "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding",
+          "authors": ["Alex Chen", "Priya Nair", "Johann Müller"],
+          "year": 2024,
+          "tags": ["artificial-intelligence", "natural-language-processing", "deep-learning"],
+          "primary_category": "cs.AI",
+          "plain_summary": "This paper shows that LLMs get dramatically better at hard math and logic problems when you ask them to 'think out loud' step by step. The trick is surprisingly simple — just adding 'Let's think through this carefully' to a prompt can push accuracy from ~40% to over 70% on competition-level math. The authors tested this across three frontier models and found the effect is remarkably consistent.",
+          "technical_summary": "We conduct ablation studies on chain-of-thought (CoT) prompting across GPT-4, Gemini Ultra, and Claude 3 Opus on BIG-Bench Hard, GSM8K, and MATH. Zero-shot CoT elicitation using a fixed suffix yields consistent +28–34pp accuracy gains on MATH and +15–22pp on BIG-Bench Hard. Few-shot CoT further improves results but with diminishing returns beyond 4 exemplars. Failure modes are concentrated in multi-step spatial reasoning tasks.",
+          "upvote_count": 142,
+          "downvote_count": 8,
+          "view_count": 1840,
+          "published_at": "2024-04-15T00:00:00Z",
+          "arxiv_url": "https://arxiv.org/abs/2404.12345"
+        },
+        {
+          "id": "2d9c3e5f-f6b4-5c7d-ae2f-3g4b5c6d7e8f",
+          "arxiv_id": "2404.67890",
+          "title": "Genomic Basis of Convergent Evolution in Extremophile Microorganisms",
+          "authors": ["María García", "Liam O'Sullivan"],
+          "year": 2024,
+          "tags": ["biology", "genomics", "computational-biology", "evolution"],
+          "primary_category": "q-bio.GN",
+          "plain_summary": "When unrelated organisms evolve the same survival trick independently — like heat resistance in microbes from volcanic vents vs. hot springs — are they using the same genetic solution? This paper compared 47 extremophile species and found that about 60% of the time, yes, completely unrelated lineages hit on the same genetic changes. The implications for how we predict evolutionary outcomes are pretty wild.",
+          "technical_summary": null,
+          "upvote_count": 87,
+          "downvote_count": 3,
+          "view_count": 920,
+          "published_at": "2024-04-14T00:00:00Z",
+          "arxiv_url": "https://arxiv.org/abs/2404.67890"
+        }
+      ],
+      "next_cursor": "eyJzY29yZSI6IDAuNjIsInBhcGVyX2lkIjogIjFjOGIyZjRkLWU1YTMtNGI2Yy05ZDFlLTJmM2E0YjVjNmQ3ZSJ9",
+      "has_more": true
+    }
+  },
+
+  "GET /api/papers/{paper_id}": {
+    "status": 200,
+    "description": "Full paper detail page",
+    "response": {
+      "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+      "arxiv_id": "2404.12345",
+      "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding",
+      "authors": ["Alex Chen", "Priya Nair", "Johann Müller"],
+      "year": 2024,
+      "abstract": "We investigate the effect of chain-of-thought prompting on multi-step reasoning tasks across a suite of frontier language models. Using a standardized zero-shot CoT elicitation protocol, we demonstrate consistent accuracy improvements across BIG-Bench Hard, GSM8K, and MATH. We further conduct ablation studies on the number of CoT exemplars, elicitation phrasing, and model scale, finding that zero-shot CoT yields 80% of the benefit of few-shot CoT at zero marginal cost. Code and evaluation harness are released at github.com/chenetal/cot-scaffolding.",
+      "plain_summary": "This paper shows that LLMs get dramatically better at hard math and logic problems when you ask them to 'think out loud' step by step...",
+      "technical_summary": "We conduct ablation studies on chain-of-thought (CoT) prompting across GPT-4, Gemini Ultra, and Claude 3 Opus on BIG-Bench Hard, GSM8K, and MATH...",
+      "tags": ["artificial-intelligence", "natural-language-processing", "deep-learning"],
+      "primary_category": "cs.AI",
+      "upvote_count": 142,
+      "downvote_count": 8,
+      "view_count": 1841,
+      "published_at": "2024-04-15T00:00:00Z",
+      "ingested_at": "2024-04-16T02:14:33Z",
+      "arxiv_url": "https://arxiv.org/abs/2404.12345",
+      "linked_posts": [
+        {
+          "id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+          "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+          "author_username": "riya_reads",
+          "comment_count": 23,
+          "upvote_count": 67
+        }
+      ]
+    }
+  },
+
+  "POST /api/papers/{paper_id}/vote": {
+    "status": 200,
+    "description": "Vote on a paper — toggling the same direction removes the vote",
+    "request": {"vote_type": "up", "session_id": null},
+    "response": {
+      "upvote_count": 143,
+      "downvote_count": 8,
+      "user_vote": "up"
+    }
+  },
+
+  "POST /api/papers/{paper_id}/view": {
+    "status": 204,
+    "description": "Increment view count — call when a paper card is opened"
+  },
+
+  "GET /api/posts": {
+    "status": 200,
+    "description": "Home feed — top-voted discussion posts",
+    "response": {
+      "items": [
+        {
+          "id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+          "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+          "author": {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "username": "riya_reads"},
+          "tags": ["artificial-intelligence", "natural-language-processing"],
+          "technical_level": "intermediate",
+          "upvote_count": 67,
+          "downvote_count": 3,
+          "comment_count": 23,
+          "created_at": "2024-04-17T14:22:00Z",
+          "linked_paper": {
+            "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+            "arxiv_id": "2404.12345",
+            "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding"
+          }
+        },
+        {
+          "id": "b3c4d5e6-f7a8-9012-bcde-f12345678901",
+          "title": "Why does CRISPR keep surprising us? The base editing paper is insane",
+          "author": {"id": "4ab96g75-6828-5673-c4gd-3d074g77bgb7", "username": "prashant_lab"},
+          "tags": ["biology", "genomics"],
+          "technical_level": "expert",
+          "upvote_count": 44,
+          "downvote_count": 1,
+          "comment_count": 12,
+          "created_at": "2024-04-16T09:40:00Z",
+          "linked_paper": null
+        }
+      ],
+      "next_cursor": "eyJ2b3RlcyI6IDY0LCAicG9zdF9pZCI6ICJhMmIzYzRkNS1lNmY3LTg5MDEtYWJjZC1lZjEyMzQ1Njc4OTAifQ==",
+      "has_more": true
+    }
+  },
+
+  "POST /api/posts": {
+    "status": 201,
+    "description": "Create a new discussion post",
+    "request": {
+      "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+      "body": "I've been reading the Chen et al. paper linked here and I keep coming back to a nagging question: are we just pattern-matching on reasoning *style* rather than actual logical capability? The GSM8K results are impressive but on adversarial examples the models still fall apart in predictable ways...",
+      "technical_level": "intermediate",
+      "tags": ["artificial-intelligence", "natural-language-processing"],
+      "paper_id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e"
+    },
+    "response": {
+      "id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+      "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+      "body": "I've been reading the Chen et al. paper linked here...",
+      "author": {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "username": "riya_reads"},
+      "tags": ["artificial-intelligence", "natural-language-processing"],
+      "technical_level": "intermediate",
+      "upvote_count": 0,
+      "downvote_count": 0,
+      "comment_count": 0,
+      "created_at": "2024-04-17T14:22:00Z",
+      "updated_at": "2024-04-17T14:22:00Z",
+      "linked_paper": {
+        "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+        "arxiv_id": "2404.12345",
+        "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding"
+      }
+    }
+  },
+
+  "GET /api/posts/{post_id}": {
+    "status": 200,
+    "description": "Full post detail",
+    "response": {
+      "id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+      "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+      "body": "I've been reading the Chen et al. paper linked here and I keep coming back to a nagging question: are we just pattern-matching on reasoning *style* rather than actual logical capability?...",
+      "author": {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "username": "riya_reads"},
+      "tags": ["artificial-intelligence", "natural-language-processing"],
+      "technical_level": "intermediate",
+      "upvote_count": 67,
+      "downvote_count": 3,
+      "comment_count": 23,
+      "created_at": "2024-04-17T14:22:00Z",
+      "updated_at": "2024-04-17T14:22:00Z",
+      "linked_paper": {
+        "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+        "arxiv_id": "2404.12345",
+        "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding"
+      }
+    }
+  },
+
+  "PATCH /api/posts/{post_id}": {
+    "status": 200,
+    "description": "Edit a post — author only",
+    "request": {"title": "Updated: Is chain-of-thought prompting actually reasoning?"},
+    "response": {"id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890", "title": "Updated: Is chain-of-thought prompting actually reasoning?", "_truncated": "...full PostDetail response..."}
+  },
+
+  "DELETE /api/posts/{post_id}": {
+    "status": 204,
+    "description": "Delete a post — author only; no body returned"
+  },
+
+  "POST /api/posts/{post_id}/vote": {
+    "status": 200,
+    "description": "Vote on a post",
+    "request": {"vote_type": "up"},
+    "response": {"upvote_count": 68, "downvote_count": 3, "user_vote": "up"}
+  },
+
+  "POST /api/posts/{post_id}/view": {
+    "status": 204,
+    "description": "Increment view count"
+  },
+
+  "GET /api/posts/{post_id}/comments": {
+    "status": 200,
+    "description": "Flat chronological comment list",
+    "response": [
+      {
+        "id": "c1d2e3f4-a5b6-7890-cdef-123456789abc",
+        "post_id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+        "author": {"id": "4ab96g75-6828-5673-c4gd-3d074g77bgb7", "username": "prashant_lab"},
+        "body": "Super interesting point — I think the MATH benchmark results are the real story here. The jump from 40% to 72% accuracy just by adding 'Let's think step by step' is wild.",
+        "created_at": "2024-04-17T15:04:00Z",
+        "updated_at": "2024-04-17T15:04:00Z"
+      },
+      {
+        "id": "d2e3f4a5-b6c7-8901-defa-23456789abcd",
+        "post_id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+        "author": {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "username": "riya_reads"},
+        "body": "Right, but have you seen the adversarial CoT paper where they show models confidently reason their way to wrong answers? It's not clear the reasoning is load-bearing.",
+        "created_at": "2024-04-17T15:31:00Z",
+        "updated_at": "2024-04-17T15:31:00Z"
+      }
+    ]
+  },
+
+  "POST /api/posts/{post_id}/comments": {
+    "status": 201,
+    "description": "Add a comment — requires authentication",
+    "request": {"body": "Super interesting point — I think the MATH benchmark results are the real story here."},
+    "response": {
+      "id": "c1d2e3f4-a5b6-7890-cdef-123456789abc",
+      "post_id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+      "author": {"id": "4ab96g75-6828-5673-c4gd-3d074g77bgb7", "username": "prashant_lab"},
+      "body": "Super interesting point — I think the MATH benchmark results are the real story here.",
+      "created_at": "2024-04-17T15:04:00Z",
+      "updated_at": "2024-04-17T15:04:00Z"
+    }
+  },
+
+  "DELETE /api/posts/{post_id}/comments/{comment_id}": {
+    "status": 204,
+    "description": "Delete a comment — author only"
+  },
+
+  "GET /api/search": {
+    "status": 200,
+    "description": "Search papers and posts — results split into two tabs",
+    "query_params": {"q": "chain of thought reasoning", "tag": "artificial-intelligence"},
+    "response": {
+      "query": "chain of thought reasoning",
+      "tag_filter": "artificial-intelligence",
+      "papers": [
+        {
+          "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+          "arxiv_id": "2404.12345",
+          "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding",
+          "authors": ["Alex Chen", "Priya Nair"],
+          "year": 2024,
+          "tags": ["artificial-intelligence", "natural-language-processing"],
+          "primary_category": "cs.AI",
+          "plain_summary": "This paper shows that LLMs get dramatically better at hard math...",
+          "technical_summary": null,
+          "upvote_count": 142,
+          "downvote_count": 8,
+          "view_count": 1840,
+          "published_at": "2024-04-15T00:00:00Z",
+          "arxiv_url": "https://arxiv.org/abs/2404.12345"
+        }
+      ],
+      "posts": [
+        {
+          "id": "a2b3c4d5-e6f7-8901-abcd-ef1234567890",
+          "title": "Chain-of-thought prompting is just vibes, right? Let's discuss",
+          "author": {"id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "username": "riya_reads"},
+          "tags": ["artificial-intelligence"],
+          "technical_level": "intermediate",
+          "upvote_count": 67,
+          "downvote_count": 3,
+          "comment_count": 23,
+          "created_at": "2024-04-17T14:22:00Z",
+          "linked_paper": {
+            "id": "1c8b2f4d-e5a3-4b6c-9d1e-2f3a4b5c6d7e",
+            "arxiv_id": "2404.12345",
+            "title": "Emergent Reasoning in Large Language Models via Chain-of-Thought Scaffolding"
+          }
+        }
+      ],
+      "total_papers": 14,
+      "total_posts": 6,
+      "papers_next_cursor": null,
+      "posts_next_cursor": null
+    }
+  },
+
+  "GET /api/tags": {
+    "status": 200,
+    "description": "Full tag taxonomy — used for filter tabs, onboarding interest picker, and post tag selection",
+    "response": [
+      {
+        "slug": "artificial-intelligence",
+        "label": "Artificial Intelligence",
+        "description": "Machine learning, deep learning, neural networks, and AI systems",
+        "subtopics": ["machine-learning", "deep-learning", "reinforcement-learning", "computer-vision", "natural-language-processing", "robotics", "generative-ai", "ai-alignment"]
+      },
+      {
+        "slug": "biology",
+        "label": "Biology",
+        "description": "Life sciences, genomics, and neuroscience",
+        "subtopics": ["genomics", "neuroscience", "computational-biology", "bioinformatics", "structural-biology", "systems-biology", "evolution"]
+      },
+      {
+        "slug": "physics",
+        "label": "Physics",
+        "description": "Theoretical and experimental physics",
+        "subtopics": ["quantum-computing", "quantum-mechanics", "cosmology", "condensed-matter", "particle-physics", "astrophysics", "general-relativity"]
+      }
+    ]
+  },
+
+  "POST /api/ask-ai/{paper_id}/chat": {
+    "status": 200,
+    "description": "Ask a question about a paper — Gemini 2.5 Flash-Lite powered. Pass prior turns as `history`.",
+    "request": {
+      "message": "What dataset did they use to evaluate chain-of-thought prompting, and how large is it?",
+      "history": []
+    },
+    "response": {
+      "response": "The authors evaluated on three benchmarks:\n\n1. **GSM8K** — ~8,500 grade-school math word problems. It's the standard benchmark for testing basic arithmetic reasoning in LLMs.\n\n2. **MATH** — ~12,500 competition-level math problems across 7 difficulty levels (algebra through olympiad). Much harder than GSM8K.\n\n3. **BIG-Bench Hard** — a curated subset of 23 tasks from BIG-Bench that state-of-the-art models at the time found most challenging. It covers logic, spatial reasoning, causal inference, and more.\n\nThe main headline result is on MATH, where CoT prompting pushed accuracy from ~40% to 72% on GPT-4."
+    }
+  },
+
+  "POST /api/ask-ai/{paper_id}/chat (with history)": {
+    "status": 200,
+    "description": "Multi-turn example — passing prior conversation history",
+    "request": {
+      "message": "Were there any tasks where CoT prompting made things worse?",
+      "history": [
+        {"role": "user", "content": "What dataset did they use?"},
+        {"role": "assistant", "content": "The authors evaluated on GSM8K, MATH, and BIG-Bench Hard..."}
+      ]
+    },
+    "response": {
+      "response": "Yes — the paper identifies spatial reasoning tasks as the main failure case. On a subset of BIG-Bench Hard tasks involving 3D object manipulation and navigation, models that used CoT prompting actually performed *slightly worse* than direct answering (around 2–3pp). The authors hypothesize that verbalizing spatial transformations may introduce more opportunity for error than it eliminates. This is a consistent finding across all three models tested."
+    }
+  },
+
+  "POST /api/internal/ingest": {
+    "status": 200,
+    "description": "Trigger ingestion pipeline — requires X-Internal-Secret header",
+    "response": {
+      "status": "ingestion started",
+      "detail": "running in background"
+    }
+  },
+
+  "POST /api/internal/recompute-recommendations": {
+    "status": 200,
+    "description": "Trigger recommendation score recompute — requires X-Internal-Secret header",
+    "response": {
+      "status": "recompute started",
+      "detail": "running in background"
+    }
+  },
+
+  "GET /health": {
+    "status": 200,
+    "response": {"status": "ok"}
+  }
+}
