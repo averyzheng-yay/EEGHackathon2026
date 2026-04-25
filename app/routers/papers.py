@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, text
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, get_optional_user
@@ -145,15 +146,14 @@ async def get_paper(paper_id: UUID, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Paper not found")
 
     # Fetch linked discussion posts with authors for the sidebar
-    from sqlalchemy.orm import joinedload as _joinedload
     post_result = await db.execute(
         select(Post)
-        .options(_joinedload(Post.author))
+        .options(selectinload(Post.author))
         .where(Post.paper_id == paper_id)
         .order_by(Post.upvote_count.desc())
         .limit(10)
     )
-    linked_posts_raw = post_result.unique().scalars().all()
+    linked_posts_raw = post_result.scalars().all()
 
     linked_posts = [
         {

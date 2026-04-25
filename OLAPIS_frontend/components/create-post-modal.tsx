@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { X, Plus } from "lucide-react"
+import { X, Plus, BookOpen, Search, Loader2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -26,8 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
-import { createPost } from "@/lib/api"
-import type { TechnicalLevel } from "@/lib/types"
+import { createPost, searchPapers } from "@/lib/api"
+import type { TechnicalLevel, PaperCard } from "@/lib/types"
 
 const postSchema = z.object({
   title: z
@@ -54,6 +54,14 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
   const [tagInput, setTagInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
+  // Paper picker state
+  const [paperQuery, setPaperQuery] = useState("")
+  const [paperResults, setPaperResults] = useState<PaperCard[]>([])
+  const [selectedPaper, setSelectedPaper] = useState<PaperCard | null>(null)
+  const [searchingPapers, setSearchingPapers] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
   const {
     register,
     handleSubmit,
@@ -63,12 +71,43 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
     formState: { errors },
   } = useForm<PostForm>({
     resolver: zodResolver(postSchema),
-    defaultValues: {
-      technical_level: "intermediate",
-    },
+    defaultValues: { technical_level: "intermediate" },
   })
 
   const technicalLevel = watch("technical_level")
+
+  // Debounced paper search
+  useEffect(() => {
+    if (!paperQuery.trim() || selectedPaper) {
+      setPaperResults([])
+      setShowDropdown(false)
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchingPapers(true)
+      try {
+        const results = await searchPapers(paperQuery)
+        setPaperResults(results.items.slice(0, 6))
+        setShowDropdown(results.items.length > 0)
+      } catch {
+        setPaperResults([])
+      } finally {
+        setSearchingPapers(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [paperQuery, selectedPaper])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase()
@@ -78,15 +117,10 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
     }
   }
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove))
-  }
+  const removeTag = (t: string) => setTags(tags.filter((x) => x !== t))
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      addTag()
-    }
+    if (e.key === "Enter") { e.preventDefault(); addTag() }
   }
 
   const onSubmit = async (data: PostForm) => {
@@ -95,10 +129,13 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
       const post = await createPost({
         ...data,
         tags,
+        linked_paper_id: selectedPaper?.id,
       })
       toast.success("Post created!")
       reset()
       setTags([])
+      setSelectedPaper(null)
+      setPaperQuery("")
       onOpenChange(false)
       router.push(`/posts/${post.id}`)
     } catch (error) {
@@ -110,7 +147,7 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create a discussion</DialogTitle>
         </DialogHeader>
@@ -142,6 +179,73 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
               )}
             </Field>
 
+            {/* Paper reference picker */}
+            <Field>
+              <FieldLabel>Reference a Paper (optional)</FieldLabel>
+              {selectedPaper ? (
+                <div className="flex items-start gap-3 rounded-lg border p-3 bg-muted/40">
+                  <BookOpen className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium line-clamp-2">{selectedPaper.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {selectedPaper.authors.slice(0, 3).join(", ")}
+                      {selectedPaper.authors.length > 3 && ` +${selectedPaper.authors.length - 3} more`}
+                      {selectedPaper.year && ` · ${selectedPaper.year}`}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => { setSelectedPaper(null); setPaperQuery("") }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div ref={searchRef} className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search papers by title or keyword..."
+                      value={paperQuery}
+                      onChange={(e) => setPaperQuery(e.target.value)}
+                      onFocus={() => paperResults.length > 0 && setShowDropdown(true)}
+                      className="pl-9"
+                    />
+                    {searchingPapers && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  {showDropdown && paperResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 rounded-lg border bg-popover shadow-md overflow-hidden">
+                      {paperResults.map((paper) => (
+                        <button
+                          key={paper.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2.5 hover:bg-accent transition-colors border-b last:border-b-0"
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            setSelectedPaper(paper)
+                            setPaperQuery("")
+                            setShowDropdown(false)
+                          }}
+                        >
+                          <p className="text-sm font-medium line-clamp-1">{paper.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {paper.authors.slice(0, 2).join(", ")}
+                            {paper.authors.length > 2 && " et al."}
+                            {paper.year && ` · ${paper.year}`}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Field>
+
             <Field>
               <FieldLabel htmlFor="tags">Tags</FieldLabel>
               <div className="flex gap-2">
@@ -168,53 +272,35 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
                   {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-destructive"
-                      >
+                      <button type="button" onClick={() => removeTag(tag)} className="ml-1 hover:text-destructive">
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
                   ))}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">
-                {tags.length}/8 tags
-              </p>
+              <p className="text-xs text-muted-foreground">{tags.length}/8 tags</p>
             </Field>
 
             <Field>
               <FieldLabel>Technical Level</FieldLabel>
               <Select
                 value={technicalLevel}
-                onValueChange={(value: TechnicalLevel) =>
-                  setValue("technical_level", value)
-                }
+                onValueChange={(value: TechnicalLevel) => setValue("technical_level", value)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="beginner">
-                    Beginner - Accessible to everyone
-                  </SelectItem>
-                  <SelectItem value="intermediate">
-                    Intermediate - Some background helpful
-                  </SelectItem>
-                  <SelectItem value="expert">
-                    Expert - Technical discussion
-                  </SelectItem>
+                  <SelectItem value="beginner">Beginner — Accessible to everyone</SelectItem>
+                  <SelectItem value="intermediate">Intermediate — Some background helpful</SelectItem>
+                  <SelectItem value="expert">Expert — Technical discussion</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
