@@ -44,6 +44,7 @@ export default function PostDetailPage({
   const { user } = useAuthStore()
   
   const [postVote, setPostVote] = useState<VoteType>(null)
+  const [postCounts, setPostCounts] = useState<{ upvote_count: number; downvote_count: number } | null>(null)
   const [commentVotes, setCommentVotes] = useState<Record<string, VoteType>>({})
   const [newComment, setNewComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -111,7 +112,9 @@ export default function PostDetailPage({
       const prevVote = postVote
       setPostVote(vote)
       try {
-        await votePost(id, vote)
+        const result = await votePost(id, vote)
+        setPostVote(result.user_vote)
+        setPostCounts({ upvote_count: result.upvote_count, downvote_count: result.downvote_count })
       } catch {
         setPostVote(prevVote)
         toast.error("Failed to vote")
@@ -124,7 +127,9 @@ export default function PostDetailPage({
     const prevVote = postVote
     setPostVote(null)
     try {
-      await removeVotePost(id, prevVote!)
+      const result = await removeVotePost(id, prevVote!)
+      setPostVote(result.user_vote)
+      setPostCounts({ upvote_count: result.upvote_count, downvote_count: result.downvote_count })
     } catch {
       setPostVote(prevVote)
       toast.error("Failed to remove vote")
@@ -277,8 +282,8 @@ export default function PostDetailPage({
         {/* Vote buttons */}
         <div className="flex items-center gap-4 py-4 border-y">
           <VoteButtons
-            upvotes={post.upvote_count}
-            downvotes={post.downvote_count}
+            upvotes={postCounts?.upvote_count ?? post.upvote_count}
+            downvotes={postCounts?.downvote_count ?? post.downvote_count}
             userVote={postVote}
             onVote={handlePostVote}
             onRemoveVote={handleRemovePostVote}

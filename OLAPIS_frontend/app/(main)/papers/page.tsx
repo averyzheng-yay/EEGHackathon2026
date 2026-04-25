@@ -16,6 +16,7 @@ export default function PapersPage() {
   const { user } = useAuthStore()
   const [askAIPaper, setAskAIPaper] = useState<PaperCardType | null>(null)
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
+  const [voteCounts, setVoteCounts] = useState<Record<string, { upvote_count: number; downvote_count: number }>>({})
 
   const getKey = (
     pageIndex: number,
@@ -67,9 +68,10 @@ export default function PapersPage() {
 
       const prevVote = userVotes[paperId]
       setUserVotes((prev) => ({ ...prev, [paperId]: vote }))
-
       try {
-        await votePaper(paperId, vote)
+        const result = await votePaper(paperId, vote)
+        setUserVotes((prev) => ({ ...prev, [paperId]: result.user_vote }))
+        setVoteCounts((prev) => ({ ...prev, [paperId]: { upvote_count: result.upvote_count, downvote_count: result.downvote_count } }))
       } catch {
         setUserVotes((prev) => ({ ...prev, [paperId]: prevVote }))
         toast.error("Failed to vote")
@@ -82,9 +84,10 @@ export default function PapersPage() {
     async (paperId: string) => {
       const prevVote = userVotes[paperId]
       setUserVotes((prev) => ({ ...prev, [paperId]: null }))
-
       try {
-        await removeVotePaper(paperId, prevVote!)
+        const result = await removeVotePaper(paperId, prevVote!)
+        setUserVotes((prev) => ({ ...prev, [paperId]: result.user_vote }))
+        setVoteCounts((prev) => ({ ...prev, [paperId]: { upvote_count: result.upvote_count, downvote_count: result.downvote_count } }))
       } catch {
         setUserVotes((prev) => ({ ...prev, [paperId]: prevVote }))
         toast.error("Failed to remove vote")
@@ -142,16 +145,17 @@ export default function PapersPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {papers.map((paper) => (
-              <PaperCard
+            {papers.map((paper) => {
+              const counts = voteCounts[paper.id]
+              return <PaperCard
                 key={paper.id}
-                paper={paper}
+                paper={{ ...paper, ...(counts ?? {}) }}
                 userVote={userVotes[paper.id]}
                 onVote={(vote) => handleVote(paper.id, vote)}
                 onRemoveVote={() => handleRemoveVote(paper.id)}
                 onAskAI={() => setAskAIPaper(paper)}
               />
-            ))}
+            })}
           </div>
 
           {/* Loading more indicator */}

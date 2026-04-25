@@ -28,6 +28,7 @@ export default function PaperDetailPage({
   const { user } = useAuthStore()
   
   const [paperVote, setPaperVote] = useState<VoteType>(null)
+  const [paperCounts, setPaperCounts] = useState<{ upvote_count: number; downvote_count: number } | null>(null)
   const [showTechnical, setShowTechnical] = useState(
     user?.expertise_level === "expert"
   )
@@ -53,7 +54,9 @@ export default function PaperDetailPage({
       const prevVote = paperVote
       setPaperVote(vote)
       try {
-        await votePaper(id, vote)
+        const result = await votePaper(id, vote)
+        setPaperVote(result.user_vote)
+        setPaperCounts({ upvote_count: result.upvote_count, downvote_count: result.downvote_count })
       } catch {
         setPaperVote(prevVote)
         toast.error("Failed to vote")
@@ -66,7 +69,9 @@ export default function PaperDetailPage({
     const prevVote = paperVote
     setPaperVote(null)
     try {
-      await removeVotePaper(id, prevVote!)
+      const result = await removeVotePaper(id, prevVote!)
+      setPaperVote(result.user_vote)
+      setPaperCounts({ upvote_count: result.upvote_count, downvote_count: result.downvote_count })
     } catch {
       setPaperVote(prevVote)
       toast.error("Failed to remove vote")
@@ -216,8 +221,8 @@ export default function PaperDetailPage({
             {/* Actions */}
             <div className="flex items-center gap-4 py-4 border-y mb-6">
               <VoteButtons
-                upvotes={paper.upvote_count}
-                downvotes={paper.downvote_count}
+                upvotes={paperCounts?.upvote_count ?? paper.upvote_count}
+                downvotes={paperCounts?.downvote_count ?? paper.downvote_count}
                 userVote={paperVote}
                 onVote={handleVote}
                 onRemoveVote={handleRemoveVote}

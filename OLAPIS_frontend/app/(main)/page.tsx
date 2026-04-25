@@ -20,6 +20,7 @@ export default function HomePage() {
   const [createPostOpen, setCreatePostOpen] = useState(false)
   const [askAIPaper, setAskAIPaper] = useState<PaperCard | null>(null)
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
+  const [voteCounts, setVoteCounts] = useState<Record<string, { upvote_count: number; downvote_count: number }>>({})
 
   const getKey = (
     pageIndex: number,
@@ -68,12 +69,12 @@ export default function HomePage() {
         toast.error("Please log in to vote")
         return
       }
-
       const prevVote = userVotes[postId]
       setUserVotes((prev) => ({ ...prev, [postId]: vote }))
-
       try {
-        await votePost(postId, vote)
+        const result = await votePost(postId, vote)
+        setUserVotes((prev) => ({ ...prev, [postId]: result.user_vote }))
+        setVoteCounts((prev) => ({ ...prev, [postId]: { upvote_count: result.upvote_count, downvote_count: result.downvote_count } }))
       } catch {
         setUserVotes((prev) => ({ ...prev, [postId]: prevVote }))
         toast.error("Failed to vote")
@@ -86,9 +87,10 @@ export default function HomePage() {
     async (postId: string) => {
       const prevVote = userVotes[postId]
       setUserVotes((prev) => ({ ...prev, [postId]: null }))
-
       try {
-        await removeVotePost(postId, prevVote!)
+        const result = await removeVotePost(postId, prevVote!)
+        setUserVotes((prev) => ({ ...prev, [postId]: result.user_vote }))
+        setVoteCounts((prev) => ({ ...prev, [postId]: { upvote_count: result.upvote_count, downvote_count: result.downvote_count } }))
       } catch {
         setUserVotes((prev) => ({ ...prev, [postId]: prevVote }))
         toast.error("Failed to remove vote")
@@ -165,10 +167,11 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {posts.map((post) => (
-              <PostCard
+            {posts.map((post) => {
+              const counts = voteCounts[post.id]
+              return <PostCard
                 key={post.id}
-                post={post}
+                post={{ ...post, ...(counts ?? {}) }}
                 userVote={userVotes[post.id]}
                 onVote={(vote) => handleVote(post.id, vote)}
                 onRemoveVote={() => handleRemoveVote(post.id)}
@@ -178,7 +181,7 @@ export default function HomePage() {
                     : undefined
                 }
               />
-            ))}
+            })}
 
             {/* Loading more indicator */}
             {isValidating && (
