@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, get_optional_user
@@ -89,7 +90,7 @@ async def get_posts_feed(
     # For MVP, the home feed shows top-voted posts.
     # Personalization of the post feed is a v2 feature (posts don't have recommendation scores).
     net_votes = (Post.upvote_count - Post.downvote_count).label("net_votes")
-    q = select(Post, net_votes)
+    q = select(Post, net_votes).options(selectinload(Post.author))
     if tag:
         q = q.where(Post.tags.contains([tag]))
     if post_id_lt:
@@ -147,15 +148,15 @@ async def create_post(
         tags=body.tags or [],
     )
     db.add(post)
-    await db.flush()
-    await db.refresh(post, ["author"])
     await db.commit()
+    result2 = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post.id))
+    post = result2.scalar_one()
     return _post_to_detail(post, paper)
 
 
 @router.get("/{post_id}", response_model=PostDetail, summary="Full post detail")
 async def get_post(post_id: UUID, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Post).where(Post.id == post_id))
+    result = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -165,7 +166,6 @@ async def get_post(post_id: UUID, db: AsyncSession = Depends(get_db)):
         paper_result = await db.execute(select(Paper).where(Paper.id == post.paper_id))
         paper = paper_result.scalar_one_or_none()
 
-    await db.refresh(post, ["author"])
     return _post_to_detail(post, paper)
 
 
@@ -176,7 +176,7 @@ async def update_post(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Post).where(Post.id == post_id))
+    result = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -193,7 +193,8 @@ async def update_post(
         post.tags = body.tags
 
     await db.commit()
-    await db.refresh(post, ["author"])
+    result2 = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post.id))
+    post = result2.scalar_one()
 
     paper = None
     if post.paper_id:
@@ -209,7 +210,7 @@ async def delete_post(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Post).where(Post.id == post_id))
+    result = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -226,7 +227,7 @@ async def vote_post(
     current_user: User | None = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Post).where(Post.id == post_id))
+    result = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -283,7 +284,7 @@ async def vote_post(
 
 @router.post("/{post_id}/view", status_code=204, summary="Record a post view")
 async def record_post_view(post_id: UUID, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Post).where(Post.id == post_id))
+    result = await db.execute(select(Post).options(selectinload(Post.author)).where(Post.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")

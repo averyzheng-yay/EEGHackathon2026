@@ -59,6 +59,9 @@ async def get_papers_feed(
 
     if current_user and current_user.onboarding_complete:
         papers, next_cursor = await _personalized_feed(db, current_user.id, cursor, limit, tag)
+        # Cold-start: no recommendation scores computed yet — fall back to top-voted
+        if not papers:
+            papers, next_cursor = await _top_voted_feed(db, cursor, limit, tag)
     else:
         papers, next_cursor = await _top_voted_feed(db, cursor, limit, tag)
 

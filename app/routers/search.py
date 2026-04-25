@@ -3,6 +3,7 @@ Full-text search across papers and posts using PostgreSQL pg_trgm + tsvector.
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select, text
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -80,7 +81,7 @@ async def search(
     post_query = func.plainto_tsquery("english", q)
     post_rank = func.ts_rank(post_ts, post_query).label("rank")
 
-    postsq = select(Post, post_rank).where(
+    postsq = select(Post, post_rank).options(selectinload(Post.author)).where(
         or_(
             post_ts.op("@@")(post_query),
             Post.title.ilike(f"%{q}%"),
@@ -99,9 +100,6 @@ async def search(
         pr = await db.execute(select(Paper).where(Paper.id.in_(paper_ids)))
         for paper in pr.scalars().all():
             papers_by_id[paper.id] = paper
-
-    for post in raw_posts:
-        await db.refresh(post, ["author"])
 
     post_items = [
         PostCard(
