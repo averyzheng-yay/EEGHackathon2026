@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # Free tier: 15 RPM / 1,000 RPD (verified April 2026)
     google_api_key: str = ""
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-    gemini_model: str = "gemini-2.5-flash-lite-preview"
+    gemini_model: str = "gemini-2.5-flash-lite"
 
     # Ingestion
     arxiv_papers_per_category: int = 5
