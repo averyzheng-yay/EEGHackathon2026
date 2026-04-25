@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt_handler import (
@@ -21,6 +22,14 @@ from app.schemas.auth import LoginRequest, LogoutRequest, RefreshRequest, Regist
 from app.schemas.user import AuthResponse, UserInterestItem, UserMe
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+async def _load_user(db: AsyncSession, user_id) -> User:
+    """Re-query the user with interests eagerly loaded — avoids MissingGreenlet from lazy access."""
+    result = await db.execute(
+        select(User).options(selectinload(User.interests)).where(User.id == user_id)
+    )
+    return result.scalar_one()
 
 
 async def _build_user_me(user: User) -> UserMe:
@@ -71,13 +80,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.flush()  # get user.id without committing
 
     access, raw_refresh = await _issue_tokens(user, db)
-    # Explicitly load the relationship — lazy access in async raises MissingGreenlet
-    await db.refresh(user, ["interests"])
-    return AuthResponse(
-        access_token=access,
-        refresh_token=raw_refresh,
-        user=await _build_user_me(user),
-    )
+    fresh = await _load_user(db, user.id)
+    return AuthResponse(access_token=access, refresh_token=raw_refresh, user=await _build_user_me(fresh))
 
 
 @router.post("/login", response_model=AuthResponse, summary="Log in and receive tokens")
@@ -88,19 +92,12 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    # Merge anonymous votes from the session into the user's account
     if body.session_id:
         await _merge_anonymous_votes(db, user.id, body.session_id)
 
-    # Eagerly load interests for the response
-    await db.refresh(user, ["interests"])
-
     access, raw_refresh = await _issue_tokens(user, db)
-    return AuthResponse(
-        access_token=access,
-        refresh_token=raw_refresh,
-        user=await _build_user_me(user),
-    )
+    fresh = await _load_user(db, user.id)
+    return AuthResponse(access_token=access, refresh_token=raw_refresh, user=await _build_user_me(fresh))
 
 
 async def _merge_anonymous_votes(db: AsyncSession, user_id, session_id: str) -> None:

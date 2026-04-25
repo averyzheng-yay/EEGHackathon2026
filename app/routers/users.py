@@ -3,6 +3,7 @@ User profile routes: current user, public profiles, and onboarding.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -20,7 +21,12 @@ from app.taxonomy import ALL_TAGS
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-def _to_user_me(user: User) -> UserMe:
+async def _fetch_user_me(db: AsyncSession, user_id) -> UserMe:
+    """Re-query the user with interests loaded in a single round-trip."""
+    result = await db.execute(
+        select(User).options(selectinload(User.interests)).where(User.id == user_id)
+    )
+    user = result.scalar_one()
     return UserMe(
         id=user.id,
         email=user.email,
@@ -35,8 +41,7 @@ def _to_user_me(user: User) -> UserMe:
 
 @router.get("/me", response_model=UserMe, summary="Get current user's full profile")
 async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await db.refresh(current_user, ["interests"])
-    return _to_user_me(current_user)
+    return await _fetch_user_me(db, current_user.id)
 
 
 @router.patch("/me", response_model=UserMe, summary="Update expertise level or interests")
@@ -49,22 +54,20 @@ async def update_me(
         current_user.expertise_level = ExpertiseLevel(body.expertise_level)
 
     if body.interests is not None:
-        # Silently filter unrecognised slugs (frontend may send slugified labels)
         body.interests = [t for t in body.interests if t in ALL_TAGS]
 
-        # Replace interests
-        await db.execute(
+        # Load existing interests before deleting them
+        existing = await db.execute(
             select(UserInterest).where(UserInterest.user_id == current_user.id)
         )
-        for old in current_user.interests:
+        for old in existing.scalars().all():
             await db.delete(old)
 
         for priority, slug in enumerate(body.interests[:10], start=1):
             db.add(UserInterest(user_id=current_user.id, tag_slug=slug, priority=priority))
 
     await db.commit()
-    await db.refresh(current_user, ["interests"])
-    return _to_user_me(current_user)
+    return await _fetch_user_me(db, current_user.id)
 
 
 @router.post("/me/onboarding", response_model=UserMe, summary="Complete onboarding after signup")
@@ -73,24 +76,23 @@ async def complete_onboarding(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Silently filter unrecognised slugs so the frontend's human-readable labels
-    # that get slugified (e.g. "artificial-intelligence") still work even when
-    # some don't map perfectly to the backend taxonomy.
     body.interests = [t for t in body.interests if t in ALL_TAGS]
 
     current_user.expertise_level = ExpertiseLevel(body.expertise_level)
     current_user.onboarding_complete = True
 
-    # Clear any prior interests and set the top-5 seed
-    for old in current_user.interests:
+    # Delete existing interests via explicit query — never touch the lazy relationship
+    existing = await db.execute(
+        select(UserInterest).where(UserInterest.user_id == current_user.id)
+    )
+    for old in existing.scalars().all():
         await db.delete(old)
 
     for priority, slug in enumerate(body.interests[:10], start=1):
         db.add(UserInterest(user_id=current_user.id, tag_slug=slug, priority=priority))
 
     await db.commit()
-    await db.refresh(current_user, ["interests"])
-    return _to_user_me(current_user)
+    return await _fetch_user_me(db, current_user.id)
 
 
 @router.get("/{username}", response_model=UserPublic, summary="Get public profile by username")
