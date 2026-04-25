@@ -10,7 +10,7 @@
 | Database | Neon PostgreSQL (serverless) |
 | ORM / Migrations | SQLAlchemy 2.0 (async) + Alembic |
 | Auth | JWT (access tokens) + opaque refresh tokens |
-| Ingestion LLM | Qwen `qwen-long` via DashScope (OpenAI-compatible) |
+| Ingestion LLM | Llama 3.1 8b via Cerebras.ai |
 | Chat LLM | Gemini 2.5 Flash-Lite via Google AI (OpenAI-compatible) |
 | Search | PostgreSQL `pg_trgm` + full-text `tsvector` |
 | Deployment | Vercel (Python serverless) |
