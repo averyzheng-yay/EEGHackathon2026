@@ -19,6 +19,10 @@ import { updateUserSettings } from "@/lib/api"
 import { TOPIC_CATEGORIES, type ExpertiseLevel } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
+// Mirrors the toSlug helper in lib/api.ts — converts "Artificial Intelligence" → "artificial-intelligence"
+const toSlug = (label: string) =>
+  label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+
 const EXPERTISE_LEVELS: { value: ExpertiseLevel; label: string; description: string }[] = [
   {
     value: "beginner",
@@ -52,12 +56,14 @@ export default function SettingsPage() {
     return null
   }
 
+  // State stores backend slugs; labels are converted on toggle
   const toggleTopic = (topic: string) => {
+    const slug = toSlug(topic)
     setSelectedTopics((prev) =>
-      prev.includes(topic)
-        ? prev.filter((t) => t !== topic)
+      prev.includes(slug)
+        ? prev.filter((t) => t !== slug)
         : prev.length < 5
-        ? [...prev, topic]
+        ? [...prev, slug]
         : prev
     )
   }
@@ -159,7 +165,7 @@ export default function SettingsPage() {
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {topics.map((topic) => {
-                      const isSelected = selectedTopics.includes(topic)
+                      const isSelected = selectedTopics.includes(toSlug(topic))
                       return (
                         <button
                           key={topic}

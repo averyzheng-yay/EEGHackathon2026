@@ -49,9 +49,8 @@ async def update_me(
         current_user.expertise_level = ExpertiseLevel(body.expertise_level)
 
     if body.interests is not None:
-        invalid = [t for t in body.interests if t not in ALL_TAGS]
-        if invalid:
-            raise HTTPException(status_code=422, detail=f"Unknown tags: {invalid}")
+        # Silently filter unrecognised slugs (frontend may send slugified labels)
+        body.interests = [t for t in body.interests if t in ALL_TAGS]
 
         # Replace interests
         await db.execute(
@@ -74,9 +73,10 @@ async def complete_onboarding(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    invalid = [t for t in body.interests if t not in ALL_TAGS]
-    if invalid:
-        raise HTTPException(status_code=422, detail=f"Unknown tags: {invalid}")
+    # Silently filter unrecognised slugs so the frontend's human-readable labels
+    # that get slugified (e.g. "artificial-intelligence") still work even when
+    # some don't map perfectly to the backend taxonomy.
+    body.interests = [t for t in body.interests if t in ALL_TAGS]
 
     current_user.expertise_level = ExpertiseLevel(body.expertise_level)
     current_user.onboarding_complete = True

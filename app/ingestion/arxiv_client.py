@@ -18,7 +18,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 ATOM_NS = "http://www.w3.org/2005/Atom"
 ARXIV_NS = "http://arxiv.org/schemas/atom"
 REQUEST_DELAY = 3.0  # seconds between category queries (arXiv politeness policy)
@@ -48,7 +48,7 @@ async def fetch_recent_papers(category: str, max_results: int = 5) -> list[Arxiv
         "sortOrder": "descending",
     }
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(ARXIV_API_URL, params=params)
             resp.raise_for_status()
     except httpx.HTTPError as exc:

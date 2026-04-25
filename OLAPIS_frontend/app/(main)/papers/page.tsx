@@ -84,7 +84,7 @@ export default function PapersPage() {
       setUserVotes((prev) => ({ ...prev, [paperId]: null }))
 
       try {
-        await removeVotePaper(paperId)
+        await removeVotePaper(paperId, prevVote!)
       } catch {
         setUserVotes((prev) => ({ ...prev, [paperId]: prevVote }))
         toast.error("Failed to remove vote")

@@ -39,11 +39,15 @@ app = FastAPI(
 )
 
 # CORS — tighten ALLOWED_ORIGINS in production
-origins = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+_configured = [o.strip() for o in settings.allowed_origins.split(",") if o.strip()]
+# Always allow the Next.js dev server; production origins come from ALLOWED_ORIGINS env var
+_dev_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+origins = list(set(_configured + _dev_origins)) if _configured != ["*"] else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins != ["*"] else ["*"],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=False,  # app uses Bearer tokens, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )

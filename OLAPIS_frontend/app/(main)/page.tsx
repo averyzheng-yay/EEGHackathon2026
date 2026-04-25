@@ -88,7 +88,7 @@ export default function HomePage() {
       setUserVotes((prev) => ({ ...prev, [postId]: null }))
 
       try {
-        await removeVotePost(postId)
+        await removeVotePost(postId, prevVote!)
       } catch {
         setUserVotes((prev) => ({ ...prev, [postId]: prevVote }))
         toast.error("Failed to remove vote")

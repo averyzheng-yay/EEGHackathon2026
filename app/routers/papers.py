@@ -141,17 +141,22 @@ async def get_paper(paper_id: UUID, db: AsyncSession = Depends(get_db)):
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
 
-    # Fetch linked discussion posts (just enough for the sidebar list)
+    # Fetch linked discussion posts with authors for the sidebar
+    from sqlalchemy.orm import joinedload as _joinedload
     post_result = await db.execute(
-        select(Post).where(Post.paper_id == paper_id).order_by(Post.upvote_count.desc()).limit(10)
+        select(Post)
+        .options(_joinedload(Post.author))
+        .where(Post.paper_id == paper_id)
+        .order_by(Post.upvote_count.desc())
+        .limit(10)
     )
-    linked_posts_raw = post_result.scalars().all()
+    linked_posts_raw = post_result.unique().scalars().all()
 
     linked_posts = [
         {
             "id": str(p.id),
             "title": p.title,
-            "author_username": None,  # loaded below if needed
+            "author_username": p.author.username if p.author else None,
             "comment_count": p.comment_count,
             "upvote_count": p.upvote_count,
         }

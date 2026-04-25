@@ -124,7 +124,7 @@ export default function PostDetailPage({
     const prevVote = postVote
     setPostVote(null)
     try {
-      await removeVotePost(id)
+      await removeVotePost(id, prevVote!)
     } catch {
       setPostVote(prevVote)
       toast.error("Failed to remove vote")

@@ -15,7 +15,7 @@ import { VoteButtons } from "@/components/vote-buttons"
 import { PostCard } from "@/components/post-card"
 import { AskAIModal } from "@/components/ask-ai-modal"
 import { useAuthStore } from "@/lib/store"
-import { getPaper, getLinkedPosts, votePaper, removeVotePaper } from "@/lib/api"
+import { getPaper, votePaper, removeVotePaper } from "@/lib/api"
 import type { VoteType } from "@/lib/types"
 
 export default function PaperDetailPage({
@@ -40,12 +40,9 @@ export default function PaperDetailPage({
     { revalidateOnFocus: false }
   )
 
-  // Fetch linked discussions
-  const { data: linkedPosts, isLoading: postsLoading } = useSWR(
-    paper ? `paper-${id}-posts` : null,
-    () => getLinkedPosts(id),
-    { revalidateOnFocus: false }
-  )
+  // Linked posts come from the paper detail response itself
+  const linkedPosts = paper?.linked_posts
+  const postsLoading = paperLoading
 
   const handleVote = useCallback(
     async (vote: "upvote" | "downvote") => {
@@ -69,7 +66,7 @@ export default function PaperDetailPage({
     const prevVote = paperVote
     setPaperVote(null)
     try {
-      await removeVotePaper(id)
+      await removeVotePaper(id, prevVote!)
     } catch {
       setPaperVote(prevVote)
       toast.error("Failed to remove vote")
@@ -282,7 +279,7 @@ export default function PaperDetailPage({
                         {post.title}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        by {post.author.username} · {post.comment_count} comments
+                        {post.author_username ? `by ${post.author_username} · ` : ""}{post.comment_count} comments
                       </p>
                     </Link>
                   ))}

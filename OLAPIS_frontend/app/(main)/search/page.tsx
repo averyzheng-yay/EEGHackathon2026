@@ -89,7 +89,7 @@ function SearchContent() {
       const prevVote = userVotes[postId]
       setUserVotes((prev) => ({ ...prev, [postId]: null }))
       try {
-        await removeVotePost(postId)
+        await removeVotePost(postId, prevVote!)
       } catch {
         setUserVotes((prev) => ({ ...prev, [postId]: prevVote }))
         toast.error("Failed to remove vote")
@@ -121,7 +121,7 @@ function SearchContent() {
       const prevVote = userVotes[paperId]
       setUserVotes((prev) => ({ ...prev, [paperId]: null }))
       try {
-        await removeVotePaper(paperId)
+        await removeVotePaper(paperId, prevVote!)
       } catch {
         setUserVotes((prev) => ({ ...prev, [paperId]: prevVote }))
         toast.error("Failed to remove vote")

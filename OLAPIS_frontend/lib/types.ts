@@ -8,8 +8,10 @@ export interface User {
   email: string
   username: string
   expertise_level: ExpertiseLevel
-  interests: string[]
+  interests: string[]          // tag slugs, e.g. ["artificial-intelligence", "machine-learning"]
+  onboarding_complete: boolean
   created_at: string
+  updated_at: string
 }
 
 export interface AuthResponse {
@@ -27,13 +29,25 @@ export interface Paper {
   authors: string[]
   year: number
   abstract: string
-  plain_summary: string
-  technical_summary: string
+  plain_summary: string | null
+  technical_summary: string | null
   tags: string[]
+  primary_category: string | null
   upvote_count: number
   downvote_count: number
+  view_count: number
   ingested_at: string
-  arxiv_url: string
+  published_at: string | null
+  arxiv_url: string | null
+  linked_posts?: LinkedPost[]
+}
+
+export interface LinkedPost {
+  id: string
+  title: string
+  author_username: string | null
+  comment_count: number
+  upvote_count: number
 }
 
 export interface PaperCard {
@@ -41,11 +55,16 @@ export interface PaperCard {
   arxiv_id: string
   title: string
   authors: string[]
-  year: number
+  year: number | null
   tags: string[]
+  primary_category: string | null
   upvote_count: number
   downvote_count: number
-  summary_preview: string
+  // Both summary fields are present; paper-card uses summary_preview as display text
+  plain_summary: string | null
+  technical_summary: string | null
+  summary_preview: string      // derived: plain_summary ?? technical_summary ?? ""
+  arxiv_url: string | null
 }
 
 // Discussion Post types
@@ -54,7 +73,7 @@ export type TechnicalLevel = "beginner" | "intermediate" | "expert"
 export interface DiscussionPost {
   id: string
   title: string
-  content: string
+  content: string              // mapped from backend's `body` field
   author: {
     id: string
     username: string
@@ -65,18 +84,23 @@ export interface DiscussionPost {
   upvote_count: number
   downvote_count: number
   comment_count: number
-  linked_paper?: PaperCard | null
+  linked_paper?: {
+    id: string
+    arxiv_id: string
+    title: string
+    authors: string[]          // may be empty [] if not returned by this endpoint
+  } | null
 }
 
 export interface Comment {
   id: string
-  content: string
+  content: string              // mapped from backend's `body` field
   author: {
     id: string
     username: string
   }
   created_at: string
-  upvote_count: number
+  upvote_count: number         // always 0 — comment voting not yet implemented in backend
   downvote_count: number
 }
 
@@ -89,7 +113,7 @@ export interface VoteState {
   downvote_count: number
 }
 
-// Pagination
+// Pagination — cursor field matches backend's next_cursor (transformed in api.ts)
 export interface PaginatedResponse<T> {
   items: T[]
   cursor: string | null
@@ -108,11 +132,12 @@ export interface AskAIMessage {
   content: string
 }
 
-// Topic/Tag taxonomy
+// Topic/Tag taxonomy — display labels for the onboarding UI
+// These are human-readable; api.ts slugifies them before sending to the backend.
 export const TOPIC_CATEGORIES = {
   "Computer Science": [
     "Artificial Intelligence",
-    "Machine Learning", 
+    "Machine Learning",
     "Computer Vision",
     "Natural Language Processing",
     "Robotics",
@@ -140,7 +165,7 @@ export const TOPIC_CATEGORIES = {
     "High Energy Physics",
     "Nuclear Physics",
     "Optics",
-    "Quantum Physics",
+    "Quantum Computing",
     "General Relativity",
     "Statistical Mechanics",
     "Plasma Physics",
@@ -186,7 +211,7 @@ export const ALL_TOPICS = Object.entries(TOPIC_CATEGORIES).flatMap(
 
 export const QUICK_FILTER_TOPICS = [
   "AI",
-  "Math", 
+  "Math",
   "Physics",
   "Biology",
   "Chemistry",
