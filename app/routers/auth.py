@@ -71,6 +71,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.flush()  # get user.id without committing
 
     access, raw_refresh = await _issue_tokens(user, db)
+    # Explicitly load the relationship — lazy access in async raises MissingGreenlet
+    await db.refresh(user, ["interests"])
     return AuthResponse(
         access_token=access,
         refresh_token=raw_refresh,
