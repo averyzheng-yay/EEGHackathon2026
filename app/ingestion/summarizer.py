@@ -1,13 +1,16 @@
 """
-Qwen-based paper summarizer (DashScope international endpoint).
+Paper summarizer — provider-agnostic via the OpenAI SDK.
+
+Current provider: Cerebras (https://api.cerebras.ai/v1)
+Free tier:        ~1M tokens/day (~3,300 summaries), 30 RPM
+Model:            llama-3.3-70b
+
+To swap providers: change SUMMARIZER_BASE_URL + SUMMARIZER_MODEL in .env.
 
 Rate-limit policy:
-  - 10 RPM cap on the free tier → 6 s minimum between requests
+  - Stays under INGESTION_RATE_LIMIT_RPM (default 15)
   - 429 responses trigger exponential backoff: 10 s, 20 s, 40 s
-  - After max retries the paper is skipped (logged); the pipeline does not crash
-
-Both the openai SDK's base_url and the model are configured via .env so the
-LLM provider can be swapped without touching this file.
+  - After max retries the paper is skipped; the pipeline does not crash
 """
 import asyncio
 import json
@@ -22,7 +25,6 @@ from app.taxonomy import ALL_TAGS
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Pre-built tag list for the LLM prompt — keep it compact
 _TAGS_STR = ", ".join(ALL_TAGS)
 
 _SUMMARIZE_PROMPT_TEMPLATE = """\
@@ -46,7 +48,7 @@ Choose up to 8 tags from this list ONLY:
 
 
 class _RateLimiter:
-    """Ensures at most `rpm` calls per minute by enforcing a minimum interval."""
+    """Enforces a minimum interval between requests to stay within RPM cap."""
 
     def __init__(self, rpm: int) -> None:
         self._interval = 60.0 / rpm
@@ -70,19 +72,20 @@ async def summarize_paper(
     max_retries: int = 3,
 ) -> tuple[str | None, str | None, list[str]]:
     """
-    Call Qwen to generate both summaries and extract tags.
+    Call the summarizer model to generate both summary variants and extract tags.
 
     Returns (plain_summary, technical_summary, tags).
-    Returns (None, None, []) on failure so the caller can skip gracefully.
+    Returns (None, None, []) on any failure so the pipeline can skip gracefully.
     """
-    if not settings.dashscope_api_key:
-        logger.warning("DASHSCOPE_API_KEY not set — skipping summarization")
+    if not settings.summarizer_api_key:
+        logger.warning("SUMMARIZER_API_KEY not set — skipping summarization")
         return None, None, []
 
     client = AsyncOpenAI(
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
+        api_key=settings.summarizer_api_key,
+        base_url=settings.summarizer_base_url,
     )
+
     prompt = _SUMMARIZE_PROMPT_TEMPLATE.format(
         title=title,
         authors=", ".join(authors) if authors else "Unknown",
@@ -94,7 +97,7 @@ async def summarize_paper(
         await _rate_limiter.wait()
         try:
             response = await client.chat.completions.create(
-                model=settings.qwen_model,
+                model=settings.summarizer_model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
             )
@@ -103,11 +106,17 @@ async def summarize_paper(
 
         except RateLimitError:
             backoff = 10 * (2 ** attempt)
-            logger.warning("Qwen rate limited — backing off %ds (attempt %d/%d)", backoff, attempt + 1, max_retries)
+            logger.warning(
+                "Rate limited — backing off %ds (attempt %d/%d)",
+                backoff, attempt + 1, max_retries,
+            )
             await asyncio.sleep(backoff)
 
         except Exception as exc:
-            logger.error("Qwen summarization failed for %r (attempt %d/%d): %s", title[:60], attempt + 1, max_retries, exc)
+            logger.error(
+                "Summarization failed for %r (attempt %d/%d): %s",
+                title[:60], attempt + 1, max_retries, exc,
+            )
             if attempt == max_retries - 1:
                 return None, None, []
 
@@ -116,10 +125,9 @@ async def summarize_paper(
 
 def _parse_llm_response(content: str) -> tuple[str | None, str | None, list[str]]:
     """
-    Extract summaries and tags from the LLM JSON response.
-    Falls back to raw text as plain_summary if JSON parsing fails.
+    Extract summaries and tags from the LLM's JSON response.
+    Falls back to storing raw text as plain_summary if JSON parsing fails.
     """
-    # Strip potential markdown fences the model sneaks in despite instructions
     clean = content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
     try:
@@ -130,6 +138,5 @@ def _parse_llm_response(content: str) -> tuple[str | None, str | None, list[str]
         valid_tags = [t for t in raw_tags if t in ALL_TAGS][:8]
         return plain, technical, valid_tags
     except json.JSONDecodeError:
-        # Last-resort: treat the whole response as a plain summary
         logger.warning("Could not parse LLM response as JSON; storing as plain_summary")
         return content[:2000] if content else None, None, []
